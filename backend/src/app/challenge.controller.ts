@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Param, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, HttpException, HttpStatus, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from './jwt-auth.guard';
 import { ChallengeService } from './challenge.service';
 import {
   Team,
@@ -112,8 +113,9 @@ export class ChallengeController {
 
   /**
    * POST /api/challenges/teams/register
-   * Enregistre une nouvelle équipe dans le système
+   * Enregistre une nouvelle équipe dans le système (protégé)
    */
+  @UseGuards(JwtAuthGuard)
   @Post('teams/register')
   async registerTeam(@Body() registerTeamDto: RegisterTeamDto) {
     try {
@@ -137,8 +139,9 @@ export class ChallengeController {
 
   /**
    * POST /api/challenges/request
-   * Traite une demande de challenge d'une équipe
+   * Traite une demande de challenge d'une équipe (protégé)
    */
+  @UseGuards(JwtAuthGuard)
   @Post('request')
   async requestChallenge(@Body() challengeRequestDto: ChallengeRequestDto) {
     try {
@@ -171,8 +174,9 @@ export class ChallengeController {
 
   /**
    * POST /api/challenges/start
-   * Démarre un challenge pour une équipe
+   * Démarre un challenge pour une équipe (protégé)
    */
+  @UseGuards(JwtAuthGuard)
   @Post('start')
   async startChallenge(@Body() startChallengeDto: StartChallengeDto) {
     try {

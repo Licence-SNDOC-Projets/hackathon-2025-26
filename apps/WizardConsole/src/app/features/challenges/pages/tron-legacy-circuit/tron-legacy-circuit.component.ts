@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
+import { AuthStatusComponent } from '../../../../shared/components/auth-status/auth-status.component';
 import { Subject, takeUntil, interval, combineLatest } from 'rxjs';
 import { ChallengeService } from '../../../../core/services/challenge.service';
 import {
@@ -30,7 +31,7 @@ import {
 @Component({
   selector: 'app-tron-legacy-circuit',
   standalone: true,
-  imports: [CommonModule, HttpClientModule],
+  imports: [CommonModule, HttpClientModule, AuthStatusComponent],
   templateUrl: './tron-legacy-circuit.component.html',
   styleUrl: './tron-legacy-circuit.component.scss'
 })
