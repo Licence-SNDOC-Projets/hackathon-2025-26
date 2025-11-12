@@ -19,7 +19,7 @@ Pendant 4 jours et demi, les équipes devront :
 
 ## 🧰 Matériel par équipe
 - 1 kit **Freenove FNK0077** (base robot à chenilles) [doc](https://store.freenove.com/products/fnk0077)
-- 1 **ESP32** (remplace le Pico)
+- 1 [**ESP32** (remplace le Pico)](datasheets/esp.md)
 - 1 breadboard + câbles Dupont
 - Materiel a la demainde
 - PC de développement
