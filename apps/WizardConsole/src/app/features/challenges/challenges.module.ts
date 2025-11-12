@@ -15,8 +15,8 @@ import { TronLegacyCircuitComponent } from './pages/tron-legacy-circuit/tron-leg
     RouterModule.forChild([
       {
         path: '',
-        redirectTo: 'tron-legacy-circuit',
-        pathMatch: 'full'
+        loadComponent: () => import('./pages/challenges-list/challenges-list.component').then(m => m.ChallengesListComponent),
+        title: 'Liste des Challenges'
       },
       {
         path: 'tron-legacy-circuit',
