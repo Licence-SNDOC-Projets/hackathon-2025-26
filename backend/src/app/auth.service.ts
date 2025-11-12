@@ -4,9 +4,16 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 
 /**
- * Interface pour les credentials de login
+ * Interface pour la demande de magic link
  */
-export interface LoginDto {
+export interface MagicLinkRequestDto {
+  email: string;
+}
+
+/**
+ * Interface pour les credentials de login admin (gardé pour les profs)
+ */
+export interface AdminLoginDto {
   username: string;
   password: string;
 }
@@ -18,9 +25,20 @@ export interface LoginResponse {
   access_token: string;
   user: {
     username: string;
+    email?: string;
     role: string;
   };
   expires_in: string;
+}
+
+/**
+ * Interface pour la réponse de demande de magic link
+ */
+export interface MagicLinkResponse {
+  success: boolean;
+  message: string;
+  email: string;
+  expiresIn: number;
 }
 
 /**
@@ -29,7 +47,9 @@ export interface LoginResponse {
 export interface JwtPayload {
   sub: string;
   username: string;
+  email?: string;
   role: string;
+  type: 'admin' | 'student';
   iat?: number;
   exp?: number;
 }
@@ -85,9 +105,9 @@ export class AuthService {
   }
 
   /**
-   * Génère un token JWT pour un utilisateur authentifié
+   * Génère un token JWT pour un administrateur authentifié
    */
-  async login(loginDto: LoginDto): Promise<LoginResponse> {
+  async adminLogin(loginDto: AdminLoginDto): Promise<LoginResponse> {
     const user = await this.validateUser(loginDto.username, loginDto.password);
 
     if (!user) {
@@ -97,13 +117,14 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.username,
       username: user.username,
-      role: user.role
+      role: user.role,
+      type: 'admin'
     };
 
     const access_token = this.jwtService.sign(payload);
     const expiresIn = this.configService.get<string>('JWT_EXPIRES_IN', '24h');
 
-    this.logger.log(`🔑 Token JWT généré pour ${user.username} (expire dans ${expiresIn})`);
+    this.logger.log(`🔑 Token JWT admin généré pour ${user.username} (expire dans ${expiresIn})`);
 
     return {
       access_token,
@@ -113,6 +134,77 @@ export class AuthService {
       },
       expires_in: expiresIn
     };
+  }
+
+  /**
+   * Génère un magic link pour un étudiant
+   */
+  async generateMagicLink(email: string): Promise<{
+    token: string;
+    magicLink: string;
+    expiresIn: number;
+  }> {
+    const payload: JwtPayload = {
+      sub: email,
+      username: email.split('@')[0],
+      email: email,
+      role: 'student',
+      type: 'student'
+    };
+
+    // Token avec expiration plus courte pour les magic links (2 heures)
+    const token = this.jwtService.sign(payload, { expiresIn: '2h' });
+
+    const baseUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:4200');
+    const magicLink = `${baseUrl}/auth/verify?token=${token}`;
+
+    this.logger.log(`🪄 Magic link généré pour ${email}`);
+
+    return {
+      token,
+      magicLink,
+      expiresIn: 7200 // 2 heures en secondes
+    };
+  }
+
+  /**
+   * Valide un token de magic link
+   */
+  async validateMagicLinkToken(token: string): Promise<LoginResponse> {
+    try {
+      const payload = this.jwtService.verify(token) as JwtPayload;
+
+      if (payload.type !== 'student') {
+        throw new UnauthorizedException('Token invalide pour un magic link');
+      }
+
+      this.logger.log(`✅ Magic link validé pour ${payload.email}`);
+
+      // Générer un nouveau token avec expiration normale (24h)
+      const newPayload: JwtPayload = {
+        sub: payload.email!,
+        username: payload.username,
+        email: payload.email,
+        role: 'student',
+        type: 'student'
+      };
+
+      const access_token = this.jwtService.sign(newPayload);
+
+      return {
+        access_token,
+        user: {
+          username: payload.username,
+          email: payload.email,
+          role: 'student'
+        },
+        expires_in: '24h'
+      };
+
+    } catch (error) {
+      this.logger.warn(`⚠️ Magic link invalide ou expiré: ${error.message}`);
+      throw new UnauthorizedException('Magic link invalide ou expiré');
+    }
   }
 
   /**

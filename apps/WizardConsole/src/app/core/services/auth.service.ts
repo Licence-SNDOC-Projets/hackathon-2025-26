@@ -124,6 +124,49 @@ export class AuthService {
   }
 
   /**
+   * Demande un magic link par email pour les étudiants
+   */
+  requestMagicLink(email: string): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/magic-link`, { email })
+      .pipe(
+        tap(response => {
+          console.log('📧 Magic link demandé pour:', email);
+        }),
+        catchError(error => {
+          console.error('❌ Erreur demande magic link:', error);
+          throw error;
+        })
+      );
+  }
+
+  /**
+   * Vérifie un magic link token et authentifie l'utilisateur
+   */
+  verifyMagicLinkToken(token: string): Observable<LoginResponse> {
+    return this.http.get<LoginResponse>(`${this.baseUrl}/verify-magic-link?token=${token}`)
+      .pipe(
+        tap(response => {
+          if (response.access_token) {
+            // Stocker le token et les données utilisateur
+            this.setStoredToken(response.access_token);
+            this.setStoredUser(response.user);
+
+            // Mettre à jour l'état
+            this.isAuthenticatedSubject.next(true);
+            this.currentUserSubject.next(response.user);
+
+            console.log('✅ Magic link validé:', response.user.username);
+          }
+        }),
+        catchError(error => {
+          console.error('❌ Erreur validation magic link:', error);
+          this.clearAuthState();
+          throw error;
+        })
+      );
+  }
+
+  /**
    * Déconnecte l'utilisateur
    */
   logout(): Observable<any> {
