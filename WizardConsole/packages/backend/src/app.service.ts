@@ -1,0 +1,8 @@
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class AppService {
+  getHello(): string {
+    return '🧙‍♂️ WizardConsole Backend - MQTT Race Platform Ready!';
+  }
+}
