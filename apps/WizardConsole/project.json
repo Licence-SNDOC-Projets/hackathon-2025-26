@@ -55,7 +55,8 @@
           "buildTarget": "WizardConsole:build:production"
         },
         "development": {
-          "buildTarget": "WizardConsole:build:development"
+          "buildTarget": "WizardConsole:build:development",
+          "proxyConfig": "apps/WizardConsole/proxy.config.js"
         }
       },
       "defaultConfiguration": "development"

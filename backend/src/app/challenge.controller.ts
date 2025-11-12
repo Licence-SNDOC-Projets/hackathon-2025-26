@@ -47,7 +47,7 @@ interface TelemetryDto {
  * Ce contrôleur expose les fonctionnalités de la librairie Challenge
  * via une API REST pour le frontend et les intégrations externes.
  */
-@Controller('api/challenges')
+@Controller('challenges')
 export class ChallengeController {
   constructor(private readonly challengeService: ChallengeService) {}
 
