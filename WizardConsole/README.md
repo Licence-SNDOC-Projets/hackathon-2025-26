@@ -102,7 +102,7 @@ mosquitto_pub -h localhost -p 1883 -t "/alpha/startchallenge" -m "speedrun"
 ```bash
 # Développement
 npm run dev:backend        # Démarre NestJS backend avec nodemon
-npm run dev:frontend       # Démarre Angular frontend
+nx serve frontend          # Démarre Angular frontend
 
 # Build
 npm run build:backend      # Compile TypeScript
