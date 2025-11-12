@@ -1,0 +1,31 @@
+{
+  "name": "shared-teams",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/shared/teams/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/shared/teams",
+        "tsConfig": "libs/shared/teams/tsconfig.lib.json",
+        "packageJson": "libs/shared/teams/package.json"
+      }
+    },
+    "lint": {
+      "executor": "@nx/linter:eslint",
+      "options": {
+        "lintFilePatterns": ["libs/shared/teams/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "libs/shared/teams/jest.config.ts"
+      }
+    }
+  },
+  "tags": ["scope:shared", "type:lib", "domain:teams"]
+}

@@ -3,10 +3,10 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class BeaconsService {
   private beacons = [
-    { id: 'start-line', status: 'active', lastTriggered: null },
-    { id: 'checkpoint1', status: 'active', lastTriggered: null },
-    { id: 'checkpoint2', status: 'active', lastTriggered: null },
-    { id: 'finish-line', status: 'active', lastTriggered: null },
+    { id: 'start-line', status: 'active', lastTriggered: null as Date | null },
+    { id: 'checkpoint1', status: 'active', lastTriggered: null as Date | null },
+    { id: 'checkpoint2', status: 'active', lastTriggered: null as Date | null },
+    { id: 'finish-line', status: 'active', lastTriggered: null as Date | null },
   ];
 
   getAllBeacons() {
