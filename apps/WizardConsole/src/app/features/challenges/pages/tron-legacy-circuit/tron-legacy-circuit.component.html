@@ -1,0 +1,255 @@
+<div class="tron-legacy-container">
+
+  <!-- En-tête du challenge -->
+  <header class="challenge-header">
+    <div class="header-content">
+      <div class="challenge-info">
+        <h1 class="challenge-title">
+          <span class="tron-glow">TRON LEGACY CIRCUIT</span>
+        </h1>
+        <div class="challenge-subtitle" *ngIf="challengeState?.config as config">
+          {{ config.description }}
+        </div>
+      </div>
+
+      <div class="challenge-stats">
+        <div class="stat-item">
+          <span class="stat-label">ÉQUIPES</span>
+          <span class="stat-value">{{ registeredTeams.length }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">ACTIFS</span>
+          <span class="stat-value">{{ getActiveTeamsCount() }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">TEMPS MAX</span>
+          <span class="stat-value">3:00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barre de statut globale -->
+    <div class="global-status">
+      <div class="status-indicator"
+           [class.active]="challengeState?.isActive"
+           [class.countdown]="isCountdownActive">
+        <span *ngIf="!isCountdownActive && !challengeState?.isActive">STANDBY</span>
+        <span *ngIf="isCountdownActive" class="countdown-display">{{ countdownValue }}</span>
+        <span *ngIf="challengeState?.isActive && !isCountdownActive">RACE ACTIVE</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Contenu principal -->
+  <main class="main-content">
+
+    <!-- Panneau de contrôle -->
+    <section class="control-panel">
+      <h2 class="panel-title">CONTROL PANEL</h2>
+
+      <!-- Formulaire d'enregistrement d'équipe -->
+      <div class="team-registration">
+        <h3>Enregistrer une équipe</h3>
+        <div class="registration-form">
+          <input #teamName type="text" placeholder="Nom de l'équipe" class="tron-input">
+          <input #teamId type="text" placeholder="ID équipe" class="tron-input">
+          <button class="tron-button primary"
+                  (click)="registerTeam({name: teamName.value, id: teamId.value})"
+                  [disabled]="!teamName.value || !teamId.value">
+            ENREGISTRER
+          </button>
+        </div>
+      </div>
+
+      <!-- Actions rapides -->
+      <div class="quick-actions" *ngIf="registeredTeams.length > 0">
+        <h3>Actions rapides</h3>
+        <div class="action-buttons">
+          <button class="tron-button secondary"
+                  *ngFor="let team of registeredTeams"
+                  (click)="requestChallenge(team.team.id)"
+                  [disabled]="team.status !== ChallengeStatus.WAITING">
+            DEMANDER {{ team.team.name }}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Liste des équipes -->
+    <section class="teams-panel">
+      <h2 class="panel-title">ÉQUIPES ENREGISTRÉES</h2>
+
+      <div class="teams-grid">
+        <div class="team-card"
+             *ngFor="let teamState of registeredTeams"
+             [class.selected]="selectedTeam === teamState.team.id"
+             [class.online]="teamState.isOnline"
+             (click)="selectTeam(teamState.team.id)"
+             (keydown.enter)="selectTeam(teamState.team.id)"
+             (keydown.space)="selectTeam(teamState.team.id)"
+             tabindex="0"
+             role="button"
+             [attr.aria-label]="'Sélectionner équipe ' + teamState.team.name">
+
+          <!-- En-tête de la carte équipe -->
+          <div class="team-header">
+            <div class="team-name">{{ teamState.team.name }}</div>
+            <div class="team-id">{{ teamState.team.id }}</div>
+            <div class="team-status"
+                 [style.color]="getStatusColor(teamState.status)">
+              {{ teamState.status }}
+            </div>
+          </div>
+
+          <!-- Infos de base -->
+          <div class="team-info">
+            <div class="info-row">
+              <span class="info-label">BATTERIE</span>
+              <span class="info-value">{{ formatBattery(teamState.batteryLevel) }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">CONNEXION</span>
+              <span class="info-value" [class.online]="teamState.isOnline">
+                {{ teamState.isOnline ? 'ONLINE' : 'OFFLINE' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Données en temps réel si sélectionné -->
+          <div class="live-data" *ngIf="selectedTeam === teamState.team.id">
+            <ng-container *ngIf="getTeamLiveData(teamState.team.id) as liveData">
+
+              <!-- Télémétrie de base -->
+              <div class="telemetry-basic">
+                <div class="telemetry-row">
+                  <span class="telemetry-label">VITESSE</span>
+                  <span class="telemetry-value">{{ formatSpeed(liveData.currentSpeed) }}</span>
+                </div>
+                <div class="telemetry-row">
+                  <span class="telemetry-label">LIGNE</span>
+                  <span class="telemetry-value" [class.following]="liveData.isFollowingLine">
+                    {{ liveData.isFollowingLine ? 'SUIVIE' : 'PERDUE' }}
+                  </span>
+                </div>
+                <div class="telemetry-row">
+                  <span class="telemetry-label">BATTERIE</span>
+                  <span class="telemetry-value">{{ liveData.batteryVoltage.toFixed(1) }}V</span>
+                </div>
+              </div>
+
+              <!-- Capteurs de ligne si activé -->
+              <div class="sensor-data" *ngIf="displayConfig.showSensorData">
+                <div class="sensor-label">CAPTEURS DE LIGNE</div>
+                <div class="sensor-values">
+                  <div class="sensor-value"
+                       *ngFor="let value of liveData.sensorValues; let i = index"
+                       [class.active]="value > 500">
+                    {{ i }}: {{ value }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Erreurs -->
+              <div class="errors" *ngIf="liveData.errors.length > 0">
+                <div class="error-item" *ngFor="let error of liveData.errors">
+                  ⚠️ {{ error }}
+                </div>
+              </div>
+
+            </ng-container>
+          </div>
+
+          <!-- Actions de contrôle -->
+          <div class="team-actions" *ngIf="teamState.status === ChallengeStatus.ACCEPTED">
+            <button class="tron-button success"
+                    (click)="startChallenge(teamState.team.id); $event.stopPropagation()">
+              DÉMARRER CHALLENGE
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Leaderboard -->
+    <section class="leaderboard-panel" *ngIf="(challengeState?.leaderboard?.length || 0) > 0">
+      <h2 class="panel-title">LEADERBOARD</h2>
+
+      <div class="leaderboard-table">
+        <div class="table-header">
+          <div class="col-position">POS</div>
+          <div class="col-team">ÉQUIPE</div>
+          <div class="col-laps">TOURS</div>
+          <div class="col-best">MEILLEUR</div>
+          <div class="col-total">TOTAL</div>
+          <div class="col-score">SCORE</div>
+        </div>
+
+        <div class="table-row"
+             *ngFor="let entry of challengeState?.leaderboard || []; trackBy: trackByTeamId"
+             [class.first]="entry.position === 1"
+             [class.podium]="entry.position <= 3">
+
+          <div class="col-position">
+            <span class="position-number">{{ entry.position }}</span>
+            <span class="position-medal" *ngIf="entry.position <= 3">
+              {{ entry.position === 1 ? '🥇' : entry.position === 2 ? '🥈' : '🥉' }}
+            </span>
+          </div>
+
+          <div class="col-team">
+            <div class="team-name">{{ entry.teamName }}</div>
+            <div class="team-status" [style.color]="getStatusColor(entry.status)">
+              {{ entry.status }}
+            </div>
+          </div>
+
+          <div class="col-laps">{{ entry.completedLaps }}/3</div>
+          <div class="col-best">{{ formatTime(entry.bestLapTime) }}</div>
+          <div class="col-total">{{ formatTime(entry.totalTime) }}</div>
+
+          <div class="col-score">
+            <span class="score-value">{{ entry.score }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Journal des événements -->
+    <section class="logs-panel">
+      <h2 class="panel-title">JOURNAL DES ÉVÉNEMENTS</h2>
+
+      <div class="logs-container">
+        <div class="log-entry"
+             *ngFor="let log of logs; trackBy: trackByTimestamp"
+             [class]="'log-' + log.level">
+
+          <div class="log-timestamp">
+            {{ log.timestamp | date:'HH:mm:ss.SSS' }}
+          </div>
+
+          <div class="log-icon">
+            {{ getLogLevelIcon(log.level) }}
+          </div>
+
+          <div class="log-source">
+            {{ log.source }}
+          </div>
+
+          <div class="log-message">
+            {{ log.message }}
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Décompte plein écran -->
+  <div class="countdown-overlay" *ngIf="isCountdownActive">
+    <div class="countdown-circle">
+      <div class="countdown-text">{{ countdownValue }}</div>
+    </div>
+    <div class="countdown-message">GET READY FOR THE RACE</div>
+  </div>
+
+</div>
