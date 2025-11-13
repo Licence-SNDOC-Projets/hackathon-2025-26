@@ -1,0 +1,18 @@
+# =================================================================
+# .gitignore pour le dev container MQTT Race
+# =================================================================
+
+# Données MQTT persistantes (générées par Mosquitto)
+mosquitto/data/*
+mosquitto/log/*
+
+# Garder les répertoires mais pas leur contenu
+!mosquitto/data/.gitkeep
+!mosquitto/log/.gitkeep
+
+# Fichiers temporaires Docker
+.env
+docker-compose.override.yml
+
+# Logs de développement
+*.log
