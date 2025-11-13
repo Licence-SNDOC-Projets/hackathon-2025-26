@@ -1,0 +1,37 @@
+# =================================================================
+# Dockerfile personnalisé pour Mosquitto MQTT
+# Assure les bonnes permissions pour la persistance des données
+# =================================================================
+
+FROM eclipse-mosquitto:2.0
+
+# Créer l'utilisateur mosquitto avec UID/GID fixes
+USER root
+
+# Installer des utilitaires si nécessaire
+RUN apk add --no-cache bash su-exec
+
+# S'assurer que les répertoires existent avec les bonnes permissions
+RUN mkdir -p /mosquitto/data /mosquitto/log /mosquitto/config && \
+    chown -R mosquitto:mosquitto /mosquitto/ && \
+    chmod -R 755 /mosquitto/
+
+# Créer les fichiers de persistance si ils n'existent pas
+RUN touch /mosquitto/data/mosquitto.db && \
+    touch /mosquitto/log/mosquitto.log && \
+    chown mosquitto:mosquitto /mosquitto/data/mosquitto.db && \
+    chown mosquitto:mosquitto /mosquitto/log/mosquitto.log
+
+# Script d'entrée personnalisé
+COPY docker-entrypoint-mqtt.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint-mqtt.sh
+
+# Rester en root pour le script d'entrée (il bascule vers mosquitto)
+USER root
+
+# Port d'exposition
+EXPOSE 1883 9001
+
+# Point d'entrée
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint-mqtt.sh"]
+CMD ["mosquitto", "-c", "/mosquitto/config/mosquitto.conf"]

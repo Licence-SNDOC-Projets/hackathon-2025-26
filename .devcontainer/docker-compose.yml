@@ -1,0 +1,60 @@
+services:
+  devcontainer:
+    image: mcr.microsoft.com/devcontainers/typescript-node:20
+    volumes:
+      - ../:/workspace:cached
+      - node_modules_cache:/workspace/node_modules
+    working_dir: /workspace
+    command: /bin/sh -c "while sleep 1000; do :; done"
+    ports:
+      - "3000:3000"   # Backend API
+      - "4200:4200"   # Angular Frontend
+    depends_on:
+      - mqtt
+    environment:
+      - MQTT_BROKER_URL=mqtt://mqtt:1883
+      - NODE_ENV=development
+    networks:
+      - hackathon-network
+    user: "1000:1000"  # Assure l'UID/GID correct pour l'utilisateur node
+
+  mqtt:
+    build:
+      context: .
+      dockerfile: Dockerfile.mqtt
+    container_name: mqtt-broker
+    ports:
+      - "1883:1883"     # MQTT TCP port
+      - "9001:9001"     # MQTT WebSocket port
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - mqtt_data:/mosquitto/data
+      - mqtt_log:/mosquitto/log
+    restart: unless-stopped
+    networks:
+      - hackathon-network
+    environment:
+      - MOSQUITTO_USERNAME=hackathon
+      - MOSQUITTO_PASSWORD=mqtt2024
+
+  mqtt-ui:
+    image: emqx/mqttx-web:latest
+    container_name: mqtt-web-client
+    ports:
+      - "8080:80"
+    depends_on:
+      - mqtt
+    networks:
+      - hackathon-network
+
+volumes:
+  node_modules_cache:
+    driver: local
+  mqtt_data:
+    driver: local
+  mqtt_log:
+    driver: local
+
+networks:
+  hackathon-network:
+    driver: bridge

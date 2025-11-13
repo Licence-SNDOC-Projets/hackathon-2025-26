@@ -46,3 +46,5 @@ Thumbs.db
 .angular
 backend/src/app/email.service.ts
 .env
+/core.*
+.devcontainer/mosquitto/config/passwd

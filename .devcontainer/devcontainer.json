@@ -1,0 +1,58 @@
+{
+  "name": "MQTT Race Hackathon",
+  "dockerComposeFile": ["docker-compose.yml"],
+  "service": "devcontainer",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "angular.ng-template",
+        "@angular/language-service",
+        "ms-vscode.vscode-typescript-next",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-json",
+        "bradlc.vscode-tailwindcss",
+        "ms-vscode.vscode-eslint",
+        "nrwl.angular-console",
+        "ms-vscode.vscode-docker",
+        "davidanson.vscode-markdownlint",
+        "johnpapa.angular-essentials",
+        "EditorConfig.EditorConfig",
+        "dbaeumer.vscode-eslint",
+        "ms-playwright.playwright"
+      ],
+      "settings": {
+        "typescript.preferences.preferTypeOnlyAutoImports": true,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        }
+      }
+    }
+  },
+  "forwardPorts": [3000, 4200, 1883, 9001],
+  "portsAttributes": {
+    "3000": {
+      "label": "Backend API",
+      "onAutoForward": "notify"
+    },
+    "4200": {
+      "label": "Angular Frontend",
+      "onAutoForward": "notify"
+    },
+    "1883": {
+      "label": "MQTT Broker",
+      "onAutoForward": "silent"
+    },
+    "9001": {
+      "label": "MQTT WebSocket",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/init-mqtt.sh && sudo chown -R node:node /workspace && chmod +x .devcontainer/validate-setup.sh && npm install && echo '🎉 Installation terminée! Lancer: bash .devcontainer/validate-setup.sh pour valider'",
+  "remoteUser": "node",
+  "containerUser": "node",
+  "updateRemoteUserUID": true
+}
