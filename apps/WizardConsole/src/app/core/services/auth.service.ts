@@ -78,21 +78,29 @@ export class AuthService {
     const user = this.getStoredUser();
 
     if (token && user) {
-      // Vérifier la validité du token
-      this.verifyToken().subscribe({
-        next: (isValid) => {
-          if (isValid) {
-            this.isAuthenticatedSubject.next(true);
-            this.currentUserSubject.next(user);
-            console.log('✅ Session restaurée pour:', user.username);
-          } else {
+      // Restaurer immédiatement l'état depuis le localStorage
+      this.isAuthenticatedSubject.next(true);
+      this.currentUserSubject.next(user);
+      console.log('🔄 Session restaurée depuis localStorage:', user.username);
+
+      // Retarder la vérification du token pour éviter la dépendance circulaire
+      // avec AuthInterceptor pendant l'initialisation
+      setTimeout(() => {
+        this.verifyToken().subscribe({
+          next: (isValid) => {
+            if (isValid) {
+              console.log('✅ Token vérifié et valide');
+            } else {
+              console.warn('⚠️ Token invalide, déconnexion');
+              this.clearAuthState();
+            }
+          },
+          error: () => {
+            console.warn('⚠️ Erreur vérification token, déconnexion');
             this.clearAuthState();
           }
-        },
-        error: () => {
-          this.clearAuthState();
-        }
-      });
+        });
+      }, 0);
     }
   }
 

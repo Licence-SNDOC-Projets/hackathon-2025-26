@@ -131,13 +131,34 @@ export interface MQTTTeamData {
 // ========================
 
 /**
+ * Callback pour publier sur MQTT
+ */
+export type MQTTPublishCallback = (topic: string, message: string, options?: { retain?: boolean; qos?: 0 | 1 | 2 }) => void;
+
+/**
  * Classe abstraite de base pour tous les challenges
  */
 export abstract class BaseChallenge {
   protected config: ChallengeConfig;
+  private _isOpen = false;
+  private mqttPublish?: MQTTPublishCallback;
 
-  constructor(config: ChallengeConfig) {
+  constructor(config: ChallengeConfig, mqttPublish?: MQTTPublishCallback) {
     this.config = config;
+    this.mqttPublish = mqttPublish;
+
+    // Publier la config initiale sur MQTT si disponible
+    if (this.mqttPublish) {
+      this.publishConfigToMQTT();
+    }
+  }
+
+  /**
+   * Définit le callback MQTT (utile si défini après construction)
+   */
+  setMQTTPublish(callback: MQTTPublishCallback): void {
+    this.mqttPublish = callback;
+    this.publishConfigToMQTT();
   }
 
   /**
@@ -145,6 +166,64 @@ export abstract class BaseChallenge {
    */
   getConfig(): ChallengeConfig {
     return { ...this.config };
+  }
+
+  /**
+   * Vérifie si le challenge est ouvert
+   */
+  isOpen(): boolean {
+    return this._isOpen;
+  }
+
+  /**
+   * Ouvre le challenge
+   */
+  open(): void {
+    this._isOpen = true;
+    this.publishStateToMQTT();
+  }
+
+  /**
+   * Ferme le challenge
+   */
+  close(): void {
+    this._isOpen = false;
+    this.publishStateToMQTT();
+  }
+
+  /**
+   * Publie l'état du challenge sur MQTT
+   * Topic: hackathon/challenges/<challenge-id>/state
+   * Message: "open" ou "closed" (données brutes, pas JSON)
+   */
+  private publishStateToMQTT(): void {
+    if (!this.mqttPublish) return;
+
+    const topic = `hackathon/challenges/${this.config.id}/state`;
+    const message = this._isOpen ? 'open' : 'closed';
+
+    this.mqttPublish(topic, message, { retain: true, qos: 1 });
+  }
+
+  /**
+   * Publie la configuration du challenge sur MQTT
+   * Topic: hackathon/challenges/<challenge-id>/config
+   * Message: JSON de la configuration
+   */
+  private publishConfigToMQTT(): void {
+    if (!this.mqttPublish) return;
+
+    const topic = `hackathon/challenges/${this.config.id}/config`;
+    const message = JSON.stringify(this.config, null, 2);
+
+    this.mqttPublish(topic, message, { retain: true, qos: 1 });
+  }
+
+  /**
+   * Restaure l'état depuis une valeur (utile pour restaurer depuis MQTT)
+   */
+  restoreState(state: 'open' | 'closed'): void {
+    this._isOpen = state === 'open';
   }
 
   /**

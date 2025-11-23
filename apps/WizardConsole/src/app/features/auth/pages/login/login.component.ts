@@ -26,82 +26,8 @@ import { AuthService, LoginCredentials } from '../../../../core/services/auth.se
           <p class="login-subtitle">Hackathon MQTT Race - Système de Contrôle</p>
         </div>
 
-        <!-- Sélecteur de mode -->
-        <div class="mode-selector">
-          <button
-            class="mode-btn"
-            [class.active]="loginMode === 'admin'"
-            (click)="setLoginMode('admin')">
-            👨‍💻 PROFESSEUR
-          </button>
-          <button
-            class="mode-btn"
-            [class.active]="loginMode === 'student'"
-            (click)="setLoginMode('student')">
-            🎓 ÉTUDIANT
-          </button>
-        </div>
-
-        <!-- Formulaire Professeur -->
-        <form class="login-form" *ngIf="loginMode === 'admin'" (ngSubmit)="onAdminLogin()" #adminForm="ngForm">
-
-          <div class="form-group">
-            <label for="username" class="form-label">NOM D'UTILISATEUR</label>
-            <input
-              id="username"
-              type="text"
-              class="tron-input"
-              [(ngModel)]="adminCredentials.username"
-              name="username"
-              placeholder="admin"
-              required
-              autocomplete="username"
-              [disabled]="isLoading"
-            >
-          </div>
-
-          <div class="form-group">
-            <label for="password" class="form-label">MOT DE PASSE</label>
-            <input
-              id="password"
-              type="password"
-              class="tron-input"
-              [(ngModel)]="adminCredentials.password"
-              name="password"
-              placeholder="••••••••"
-              required
-              autocomplete="current-password"
-              [disabled]="isLoading"
-            >
-          </div>
-
-          <!-- Message d'erreur -->
-          <div class="error-message" *ngIf="errorMessage">
-            <span class="error-icon">⚠️</span>
-            {{ errorMessage }}
-          </div>
-
-          <!-- Message d'information -->
-          <div class="info-message" *ngIf="!errorMessage">
-            <span class="info-icon">ℹ️</span>
-            Accès administrateur avec credentials professeur
-          </div>
-
-          <!-- Bouton de connexion -->
-          <button
-            type="submit"
-            class="tron-button primary"
-            [disabled]="!adminForm.form.valid || isLoading"
-            [class.loading]="isLoading"
-          >
-            <span *ngIf="!isLoading">🔐 CONNEXION ADMIN</span>
-            <span *ngIf="isLoading">🔄 CONNEXION...</span>
-          </button>
-
-        </form>
-
-        <!-- Formulaire Étudiant -->
-        <form class="login-form" *ngIf="loginMode === 'student'" (ngSubmit)="onStudentLogin()" #studentForm="ngForm">
+        <!-- Formulaire Magic Link -->
+        <form class="login-form" (ngSubmit)="onLogin()" #loginForm="ngForm">
 
           <div class="form-group">
             <label for="email" class="form-label">ADRESSE EMAIL</label>
@@ -109,7 +35,7 @@ import { AuthService, LoginCredentials } from '../../../../core/services/auth.se
               id="email"
               type="email"
               class="tron-input"
-              [(ngModel)]="studentEmail"
+              [(ngModel)]="email"
               name="email"
               placeholder="votre.email@exemple.com"
               required
@@ -134,13 +60,14 @@ import { AuthService, LoginCredentials } from '../../../../core/services/auth.se
           <div class="info-message" *ngIf="!errorMessage && !magicLinkSent">
             <span class="info-icon">📧</span>
             Vous recevrez un lien d'accès sécurisé par email
+            <br><small>(Professeurs et étudiants utilisent le même système)</small>
           </div>
 
           <!-- Bouton d'envoi -->
           <button
             type="submit"
-            class="tron-button secondary"
-            [disabled]="!studentForm.form.valid || isLoading || magicLinkSent"
+            class="tron-button primary"
+            [disabled]="!loginForm.form.valid || isLoading || magicLinkSent"
             [class.loading]="isLoading"
           >
             <span *ngIf="!isLoading && !magicLinkSent">📧 ENVOYER LIEN D'ACCÈS</span>
@@ -149,7 +76,6 @@ import { AuthService, LoginCredentials } from '../../../../core/services/auth.se
           </button>
 
         </form>
-
 
         <!-- Footer -->
         <div class="login-footer">
@@ -355,6 +281,18 @@ import { AuthService, LoginCredentials } from '../../../../core/services/auth.se
       gap: 10px;
     }
 
+    .success-message {
+      background: rgba(0, 255, 100, 0.1);
+      border: 1px solid #00ff64;
+      border-radius: 8px;
+      padding: 15px;
+      color: #00ff64;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
     .info-message {
       background: rgba(0, 180, 216, 0.1);
       border: 1px solid #00b4d8;
@@ -363,8 +301,15 @@ import { AuthService, LoginCredentials } from '../../../../core/services/auth.se
       color: #87ceeb;
       font-size: 0.9rem;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 10px;
+      line-height: 1.6;
+    }
+
+    .info-message small {
+      display: block;
+      margin-top: 5px;
+      opacity: 0.8;
     }
 
     .login-footer {
@@ -412,17 +357,8 @@ export class LoginComponent {
   private authService = inject(AuthService);
   private router = inject(Router);
 
-  // Mode de connexion
-  loginMode: 'admin' | 'student' = 'student';
-
-  // Credentials admin (profs)
-  adminCredentials: LoginCredentials = {
-    username: '',
-    password: ''
-  };
-
-  // Email pour étudiants (magic link)
-  studentEmail = '';
+  // Email pour magic link (admin ou étudiant)
+  email = '';
   magicLinkSent = false;
 
   // État UI
@@ -432,68 +368,18 @@ export class LoginComponent {
   // Données pour l'animation de fond
   gridLines = Array.from({ length: 10 }, (_, i) => (i + 1) * 10);
 
-  // Gardé pour compatibilité
-  credentials: LoginCredentials = {
-    username: '',
-    password: ''
-  };
-
   /**
-   * Change le mode de connexion
+   * Demande de magic link (admin ou étudiant selon l'email)
    */
-  setLoginMode(mode: 'admin' | 'student') {
-    this.loginMode = mode;
-    this.errorMessage = '';
-    this.magicLinkSent = false;
-  }
-
-  /**
-   * Connexion administrateur avec username/password
-   */
-  onAdminLogin() {
-    if (!this.adminCredentials.username || !this.adminCredentials.password) {
-      this.errorMessage = 'Veuillez saisir nom d\'utilisateur et mot de passe';
-      return;
-    }
-
-    this.isLoading = true;
-    this.errorMessage = '';
-
-    // Appeler l'endpoint admin-login
-    this.authService.login(this.adminCredentials).subscribe({
-      next: (response) => {
-        console.log('✅ Connexion admin réussie:', response.user);
-
-        // Rediriger vers les challenges ou l'URL de retour
-        const returnUrl = new URLSearchParams(window.location.search).get('returnUrl') || '/challenges';
-        this.router.navigate([returnUrl]);
-
-        this.isLoading = false;
-      },
-      error: (error) => {
-        console.error('❌ Erreur de connexion admin:', error);
-
-        this.errorMessage = error.error?.message || 'Credentials administrateur incorrects';
-        this.isLoading = false;
-
-        // Effacer le mot de passe en cas d'erreur
-        this.adminCredentials.password = '';
-      }
-    });
-  }
-
-  /**
-   * Demande de magic link pour étudiant
-   */
-  onStudentLogin() {
-    if (!this.studentEmail) {
+  onLogin() {
+    if (!this.email) {
       this.errorMessage = 'Veuillez saisir une adresse email';
       return;
     }
 
     // Validation email simple
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(this.studentEmail)) {
+    if (!emailRegex.test(this.email)) {
       this.errorMessage = 'Format d\'email invalide';
       return;
     }
@@ -502,7 +388,7 @@ export class LoginComponent {
     this.errorMessage = '';
 
     // Appeler l'endpoint magic-link
-    this.authService.requestMagicLink(this.studentEmail).subscribe({
+    this.authService.requestMagicLink(this.email).subscribe({
       next: (response) => {
         console.log('✅ Magic link envoyé:', response);
 
@@ -512,7 +398,7 @@ export class LoginComponent {
         // Auto-reset après 10 secondes
         setTimeout(() => {
           this.magicLinkSent = false;
-          this.studentEmail = '';
+          this.email = '';
         }, 10000);
       },
       error: (error) => {
@@ -522,16 +408,5 @@ export class LoginComponent {
         this.isLoading = false;
       }
     });
-  }
-
-  /**
-   * Méthode legacy (pour compatibilité)
-   */
-  onLogin() {
-    if (this.loginMode === 'admin') {
-      this.onAdminLogin();
-    } else {
-      this.onStudentLogin();
-    }
   }
 }

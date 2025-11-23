@@ -19,6 +19,11 @@ import { TronLegacyCircuitComponent } from './pages/tron-legacy-circuit/tron-leg
         title: 'Liste des Challenges'
       },
       {
+        path: 'player-profile',
+        loadComponent: () => import('./pages/player-profile/player-profile.component').then(m => m.PlayerProfileComponent),
+        title: 'Profil Joueur'
+      },
+      {
         path: 'tron-legacy-circuit',
         component: TronLegacyCircuitComponent,
         title: 'Tron Legacy Circuit Challenge'

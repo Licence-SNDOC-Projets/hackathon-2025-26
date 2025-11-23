@@ -1,21 +1,12 @@
 import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcryptjs';
 
 /**
  * Interface pour la demande de magic link
  */
 export interface MagicLinkRequestDto {
   email: string;
-}
-
-/**
- * Interface pour les credentials de login admin (gardé pour les profs)
- */
-export interface AdminLoginDto {
-  username: string;
-  password: string;
 }
 
 /**
@@ -57,8 +48,8 @@ export interface JwtPayload {
 /**
  * Service d'authentification pour le hackathon
  *
- * Gère l'authentification avec login/password pour les professeurs
- * et génère des tokens JWT pour sécuriser les API
+ * Gère l'authentification uniquement par magic link
+ * Les emails admin sont détectés automatiquement via la configuration
  */
 @Injectable()
 export class AuthService {
@@ -70,86 +61,32 @@ export class AuthService {
   ) {}
 
   /**
-   * Valide les credentials utilisateur
+   * Vérifie si un email est dans la liste des administrateurs
    */
-  async validateUser(username: string, password: string): Promise<any> {
-    const adminUsername = this.configService.get<string>('ADMIN_USERNAME');
-    const adminPassword = this.configService.get<string>('ADMIN_PASSWORD');
-
-    if (!adminUsername || !adminPassword) {
-      this.logger.error('❌ Configuration d\'authentification incomplète dans .env');
-      throw new UnauthorizedException('Configuration d\'authentification manquante');
-    }
-
-    // Validation des credentials
-    if (username === adminUsername && password === adminPassword) {
-      this.logger.log(`✅ Authentification réussie pour l'utilisateur: ${username}`);
-
-      return {
-        username,
-        role: 'admin',
-        permissions: [
-          'challenges:read',
-          'challenges:write',
-          'challenges:start',
-          'challenges:stop',
-          'teams:manage',
-          'emails:send',
-          'system:admin'
-        ]
-      };
-    }
-
-    this.logger.warn(`⚠️ Tentative d'authentification échouée pour: ${username}`);
-    return null;
+  private isAdminEmail(email: string): boolean {
+    const adminEmails = this.configService.get<string>('ADMIN_EMAILS', '');
+    const adminList = adminEmails.split(',').map(e => e.trim().toLowerCase());
+    return adminList.includes(email.toLowerCase());
   }
 
   /**
-   * Génère un token JWT pour un administrateur authentifié
-   */
-  async adminLogin(loginDto: AdminLoginDto): Promise<LoginResponse> {
-    const user = await this.validateUser(loginDto.username, loginDto.password);
-
-    if (!user) {
-      throw new UnauthorizedException('Nom d\'utilisateur ou mot de passe incorrect');
-    }
-
-    const payload: JwtPayload = {
-      sub: user.username,
-      username: user.username,
-      role: user.role,
-      type: 'admin'
-    };
-
-    const access_token = this.jwtService.sign(payload);
-    const expiresIn = this.configService.get<string>('JWT_EXPIRES_IN', '24h');
-
-    this.logger.log(`🔑 Token JWT admin généré pour ${user.username} (expire dans ${expiresIn})`);
-
-    return {
-      access_token,
-      user: {
-        username: user.username,
-        role: user.role
-      },
-      expires_in: expiresIn
-    };
-  }
-
-  /**
-   * Génère un magic link pour un étudiant
+   * Génère un magic link (pour admin ou étudiant selon l'email)
    */
   async generateMagicLink(email: string): Promise<{
     token: string;
     magicLink: string;
     expiresIn: number;
   }> {
+    const isAdmin = this.isAdminEmail(email);
+    const role = isAdmin ? 'admin' : 'student';
+    const type = isAdmin ? 'admin' : 'student';
+
     const payload: JwtPayload = {
       sub: email,
       username: email.split('@')[0],
       email: email,
-      role: 'student',
-      type: 'student'
+      role: role,
+      type: type
     };
 
     // Token avec expiration plus courte pour les magic links (2 heures)
@@ -158,7 +95,7 @@ export class AuthService {
     const baseUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:4200');
     const magicLink = `${baseUrl}/auth/verify?token=${token}`;
 
-    this.logger.log(`🪄 Magic link généré pour ${email}`);
+    this.logger.log(`🪄 Magic link généré pour ${email} (rôle: ${role})`);
 
     return {
       token,
@@ -168,25 +105,21 @@ export class AuthService {
   }
 
   /**
-   * Valide un token de magic link
+   * Valide un token de magic link (admin ou étudiant)
    */
   async validateMagicLinkToken(token: string): Promise<LoginResponse> {
     try {
       const payload = this.jwtService.verify(token) as JwtPayload;
 
-      if (payload.type !== 'student') {
-        throw new UnauthorizedException('Token invalide pour un magic link');
-      }
-
-      this.logger.log(`✅ Magic link validé pour ${payload.email}`);
+      this.logger.log(`✅ Magic link validé pour ${payload.email} (rôle: ${payload.role})`);
 
       // Générer un nouveau token avec expiration normale (24h)
       const newPayload: JwtPayload = {
         sub: payload.email!,
         username: payload.username,
         email: payload.email,
-        role: 'student',
-        type: 'student'
+        role: payload.role,
+        type: payload.type
       };
 
       const access_token = this.jwtService.sign(newPayload);
@@ -196,7 +129,7 @@ export class AuthService {
         user: {
           username: payload.username,
           email: payload.email,
-          role: 'student'
+          role: payload.role
         },
         expires_in: '24h'
       };
@@ -211,12 +144,13 @@ export class AuthService {
    * Valide un token JWT et retourne l'utilisateur
    */
   async validateJwtPayload(payload: JwtPayload): Promise<any> {
-    // Vérifications supplémentaires si nécessaire
-    const adminUsername = this.configService.get<string>('ADMIN_USERNAME');
+    // Vérifier si l'email est admin
+    const isAdmin = payload.email ? this.isAdminEmail(payload.email) : false;
 
-    if (payload.username === adminUsername && payload.role === 'admin') {
+    if (isAdmin && payload.role === 'admin') {
       return {
         username: payload.username,
+        email: payload.email,
         role: payload.role,
         permissions: [
           'challenges:read',
@@ -226,6 +160,18 @@ export class AuthService {
           'teams:manage',
           'emails:send',
           'system:admin'
+        ]
+      };
+    }
+
+    // Utilisateur étudiant
+    if (payload.role === 'student') {
+      return {
+        username: payload.username,
+        email: payload.email,
+        role: payload.role,
+        permissions: [
+          'challenges:read'
         ]
       };
     }
@@ -241,36 +187,20 @@ export class AuthService {
   }
 
   /**
-   * Génère un hash du mot de passe (pour usage futur)
-   */
-  async hashPassword(password: string): Promise<string> {
-    const saltRounds = 10;
-    return bcrypt.hash(password, saltRounds);
-  }
-
-  /**
-   * Compare un mot de passe avec son hash (pour usage futur)
-   */
-  async comparePasswords(plainPassword: string, hashedPassword: string): Promise<boolean> {
-    return bcrypt.compare(plainPassword, hashedPassword);
-  }
-
-  /**
-   * Obtient la configuration d'authentification (sans mots de passe)
+   * Obtient la configuration d'authentification
    */
   getAuthConfig(): {
-    adminUsername: string;
+    adminEmails: string[];
     jwtExpiresIn: string;
     configured: boolean;
   } {
-    const adminUsername = this.configService.get<string>('ADMIN_USERNAME');
-    const adminPassword = this.configService.get<string>('ADMIN_PASSWORD');
+    const adminEmails = this.configService.get<string>('ADMIN_EMAILS', '');
     const jwtSecret = this.configService.get<string>('JWT_SECRET');
 
     return {
-      adminUsername: adminUsername || 'non configuré',
+      adminEmails: adminEmails.split(',').map(e => e.trim()).filter(e => e),
       jwtExpiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '24h'),
-      configured: !!(adminUsername && adminPassword && jwtSecret)
+      configured: !!(adminEmails && jwtSecret)
     };
   }
 

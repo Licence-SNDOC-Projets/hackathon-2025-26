@@ -1,0 +1,167 @@
+<div class="mqtt-control-container">
+  <!-- En-tête -->
+  <div class="mqtt-header">
+    <div class="header-title">
+      <h1>🌐 Contrôle Serveur MQTT</h1>
+      <p class="subtitle">Interface d'administration du broker Mosquitto</p>
+    </div>
+    <button class="btn-refresh" (click)="refreshStatus()" [disabled]="loading()">
+      <span class="icon">🔄</span>
+      Actualiser
+    </button>
+  </div>
+
+  <!-- Messages d'erreur -->
+  @if (error()) {
+    <div class="alert alert-error">
+      <span class="icon">⚠️</span>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <!-- Message de succès -->
+  @if (lastMessage()) {
+    <div class="alert alert-success">
+      <span class="icon">✅</span>
+      <span>{{ lastMessage() }}</span>
+    </div>
+  }
+
+  <!-- Statut du serveur -->
+  <div class="status-card">
+    <div class="card-header">
+      <h2>📊 Statut du Serveur</h2>
+      @if (status()) {
+        <span class="status-badge" [class.running]="status()?.isRunning" [class.stopped]="!status()?.isRunning">
+          {{ status()?.isRunning ? '🟢 EN LIGNE' : '🔴 ARRÊTÉ' }}
+        </span>
+      }
+    </div>
+
+    @if (loading() && !status()) {
+      <div class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Chargement du statut...</p>
+      </div>
+    }
+
+    @if (status()) {
+      <div class="status-grid">
+        <div class="status-item">
+          <span class="label">État</span>
+          <span class="value" [class.running]="status()?.isRunning">
+            {{ status()?.isRunning ? 'Actif' : 'Inactif' }}
+          </span>
+        </div>
+
+        @if (status()?.uptime) {
+          <div class="status-item">
+            <span class="label">Durée d'activité</span>
+            <span class="value">{{ formatUptime(status()?.uptime) }}</span>
+          </div>
+        }
+
+        @if (status()?.port) {
+          <div class="status-item">
+            <span class="label">Port</span>
+            <span class="value">{{ status()?.port }}</span>
+          </div>
+        }
+
+        @if (status()?.version) {
+          <div class="status-item">
+            <span class="label">Version</span>
+            <span class="value">{{ status()?.version }}</span>
+          </div>
+        }
+
+        @if (status()?.connections !== undefined) {
+          <div class="status-item">
+            <span class="label">Connexions actives</span>
+            <span class="value">{{ status()?.connections }}</span>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Contrôles -->
+  <div class="controls-card">
+    <div class="card-header">
+      <h2>🎮 Actions</h2>
+    </div>
+
+    <div class="controls-grid">
+      <!-- Démarrer -->
+      <button
+        class="btn btn-start"
+        (click)="startServer()"
+        [disabled]="loading() || status()?.isRunning"
+        title="Démarre le serveur MQTT">
+        <span class="icon">▶️</span>
+        <span class="text">Démarrer</span>
+      </button>
+
+      <!-- Arrêter -->
+      <button
+        class="btn btn-stop"
+        (click)="stopServer()"
+        [disabled]="loading() || !status()?.isRunning"
+        title="Arrête le serveur MQTT">
+        <span class="icon">⏹️</span>
+        <span class="text">Arrêter</span>
+      </button>
+
+      <!-- Redémarrer -->
+      <button
+        class="btn btn-restart"
+        (click)="restartServer()"
+        [disabled]="loading() || !status()?.isRunning"
+        title="Redémarre le serveur MQTT">
+        <span class="icon">🔄</span>
+        <span class="text">Redémarrer</span>
+      </button>
+
+      <!-- Recharger config -->
+      <button
+        class="btn btn-reload"
+        (click)="reloadConfig()"
+        [disabled]="loading() || !status()?.isRunning"
+        title="Recharge la configuration sans interrompre le service">
+        <span class="icon">♻️</span>
+        <span class="text">Recharger Config</span>
+      </button>
+    </div>
+
+    @if (loading()) {
+      <div class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Opération en cours...</p>
+      </div>
+    }
+  </div>
+
+  <!-- Informations -->
+  <div class="info-card">
+    <div class="card-header">
+      <h2>ℹ️ Informations</h2>
+    </div>
+    <div class="info-content">
+      <p>
+        <strong>Démarrer:</strong> Lance le broker MQTT Mosquitto. Nécessaire pour que les ESP32 puissent communiquer.
+      </p>
+      <p>
+        <strong>Arrêter:</strong> Stoppe le broker. Toutes les connexions actives seront fermées.
+      </p>
+      <p>
+        <strong>Redémarrer:</strong> Arrête puis redémarre le broker. Utile après modification de la configuration.
+      </p>
+      <p>
+        <strong>Recharger Config:</strong> Recharge la configuration sans interrompre les connexions existantes.
+      </p>
+      <p class="note">
+        ⚠️ Le statut est rafraîchi automatiquement toutes les 5 secondes.
+      </p>
+    </div>
+  </div>
+</div>

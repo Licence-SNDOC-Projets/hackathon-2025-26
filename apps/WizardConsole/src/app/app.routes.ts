@@ -19,5 +19,10 @@ export const appRoutes: Route[] = [
     path: 'challenges',
     loadChildren: () => import('./features/challenges/challenges.module').then(m => m.ChallengesModule),
     canActivate: [AuthGuard]
+  },
+  {
+    path: 'admin/mqtt-control',
+    loadComponent: () => import('./features/admin/mqtt-control/mqtt-control.component').then(m => m.MqttControlComponent),
+    canActivate: [AuthGuard]
   }
 ];

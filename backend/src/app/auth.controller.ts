@@ -1,12 +1,13 @@
 import { Controller, Post, Get, Body, HttpException, HttpStatus, UseGuards, Request, Query } from '@nestjs/common';
-import { AuthService, AdminLoginDto, MagicLinkRequestDto, LoginResponse } from './auth.service';
+import { AuthService, MagicLinkRequestDto, LoginResponse } from './auth.service';
 import { EmailService } from './email.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 /**
  * Contrôleur d'authentification
  *
- * Gère les endpoints de login/logout et la validation des tokens JWT
+ * Gère uniquement l'authentification par magic link
+ * Les droits admin sont déterminés automatiquement via l'email
  */
 @Controller('auth')
 export class AuthController {
@@ -16,37 +17,8 @@ export class AuthController {
   ) {}
 
   /**
-   * POST /api/auth/admin-login
-   * Authentifie un administrateur (prof) avec login/password
-   */
-  @Post('admin-login')
-  async adminLogin(@Body() loginDto: AdminLoginDto): Promise<LoginResponse> {
-    try {
-      if (!loginDto.username || !loginDto.password) {
-        throw new HttpException(
-          'Nom d\'utilisateur et mot de passe requis',
-          HttpStatus.BAD_REQUEST
-        );
-      }
-
-      const result = await this.authService.adminLogin(loginDto);
-
-      return result;
-
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException(
-        `Erreur lors de l'authentification admin: ${error}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
-    }
-  }
-
-  /**
    * POST /api/auth/magic-link
-   * Génère et envoie un magic link par email pour les étudiants
+   * Génère et envoie un magic link par email (admin ou étudiant selon l'email)
    */
   @Post('magic-link')
   async requestMagicLink(@Body() magicLinkDto: MagicLinkRequestDto): Promise<{
@@ -71,7 +43,7 @@ export class AuthController {
         );
       }
 
-      // Générer le magic link
+      // Générer le magic link (admin ou étudiant automatiquement détecté)
       const { token, magicLink, expiresIn } = await this.authService.generateMagicLink(magicLinkDto.email);
 
       // Envoyer l'email avec le magic link
@@ -214,17 +186,15 @@ export class AuthController {
         success: true,
         data: {
           ...config,
+          authMethod: 'magic-link',
           endpoints: {
-            login: '/api/auth/login',
+            magicLink: '/api/auth/magic-link',
+            verifyMagicLink: '/api/auth/verify-magic-link',
             profile: '/api/auth/profile',
             logout: '/api/auth/logout',
             verify: '/api/auth/verify'
           },
-          requirements: {
-            username: 'Nom d\'utilisateur administrateur',
-            password: 'Mot de passe administrateur',
-            token_header: 'Authorization: Bearer <token>'
-          }
+          description: 'Authentification uniquement par magic link. Les emails admin sont configurés dans ADMIN_EMAILS.'
         }
       };
 
@@ -251,16 +221,13 @@ export class AuthController {
       data: {
         authConfigured: config.configured,
         emailConfigured: emailConfigured,
-        adminUsername: config.adminUsername,
+        adminEmailsCount: config.adminEmails.length,
         jwtExpiresIn: config.jwtExpiresIn,
         timestamp: new Date().toISOString(),
-        authMethods: {
-          adminLogin: 'username/password pour professeurs',
-          magicLink: emailConfigured ? 'email magic link pour étudiants' : 'non disponible (email non configuré)'
-        },
+        authMethod: emailConfigured ? 'Magic link uniquement (admin/étudiant auto-détecté)' : 'Email non configuré',
         message: (config.configured && emailConfigured)
-          ? 'Service d\'authentification complet prêt'
-          : 'Configuration manquante : auth et/ou email'
+          ? 'Service d\'authentification prêt (magic link uniquement)'
+          : 'Configuration manquante : emails admin et/ou email service'
       }
     };
   }

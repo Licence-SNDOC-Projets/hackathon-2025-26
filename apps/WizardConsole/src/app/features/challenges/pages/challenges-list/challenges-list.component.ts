@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { HttpClientModule } from '@angular/common/http';
 import { ChallengeService } from '../../../../core/services/challenge.service';
+import { PlayerProfileService } from '../../../../core/services/player-profile.service';
+import { AuthService } from '../../../../core/services/auth.service';
 import { AuthStatusComponent } from '../../../../shared/components/auth-status/auth-status.component';
 import { ChallengeConfig } from '@wizard-console/challenge';
 
@@ -43,6 +45,14 @@ import { ChallengeConfig } from '@wizard-console/challenge';
             <span class="stat-label">ÉQUIPES</span>
           </div>
         </div>
+
+        <!-- Bouton admin pour contrôler MQTT -->
+        <div class="admin-section" *ngIf="isAdmin">
+          <button class="admin-mqtt-button" (click)="navigateToMqttControl()" title="Contrôler le serveur MQTT">
+            <span class="icon">🌐</span>
+            <span class="text">SERVEUR MQTT</span>
+          </button>
+        </div>
       </header>
 
       <!-- Liste des challenges -->
@@ -51,6 +61,7 @@ import { ChallengeConfig } from '@wizard-console/challenge';
         <div class="challenge-card"
              *ngFor="let challenge of challenges; trackBy: trackByChallenge"
              [class.available]="true"
+             [class.player-profile]="isPlayerProfileChallenge(challenge.id)"
              (click)="selectChallenge(challenge)"
              (keydown.enter)="selectChallenge(challenge)"
              (keydown.space)="selectChallenge(challenge)"
@@ -62,6 +73,21 @@ import { ChallengeConfig } from '@wizard-console/challenge';
           <div class="card-header">
             <h2 class="challenge-name">{{ challenge.config.name }}</h2>
             <div class="challenge-id">{{ challenge.id }}</div>
+
+            <!-- Toggle button pour Player Profile (Admin uniquement) -->
+            <div class="admin-controls" *ngIf="isAdmin && isPlayerProfileChallenge(challenge.id)">
+              <button
+                class="toggle-button"
+                [class.active]="playerProfileChallengeOpen"
+                [disabled]="isTogglingChallenge"
+                (click)="togglePlayerProfileChallenge($event)"
+                [attr.aria-label]="playerProfileChallengeOpen ? 'Fermer le challenge' : 'Ouvrir le challenge'">
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">
+                  {{ playerProfileChallengeOpen ? '🟢 OUVERT' : '🔴 FERMÉ' }}
+                </span>
+              </button>
+            </div>
           </div>
 
           <!-- Description -->
@@ -69,32 +95,7 @@ import { ChallengeConfig } from '@wizard-console/challenge';
             {{ challenge.config.description }}
           </div>
 
-          <!-- Détails techniques -->
-          <div class="challenge-details">
-            <div class="detail-item" *ngIf="challenge.config.maxLaps">
-              <span class="detail-label">TOURS MAX</span>
-              <span class="detail-value">{{ challenge.config.maxLaps }}</span>
-            </div>
 
-            <div class="detail-item" *ngIf="challenge.config.maxDuration">
-              <span class="detail-label">DURÉE MAX</span>
-              <span class="detail-value">{{ formatDuration(challenge.config.maxDuration) }}</span>
-            </div>
-
-            <div class="detail-item">
-              <span class="detail-label">DÉCOMPTE</span>
-              <span class="detail-value" [class.enabled]="challenge.config.hasCountdown">
-                {{ challenge.config.hasCountdown ? 'OUI' : 'NON' }}
-              </span>
-            </div>
-          </div>
-
-          <!-- Bouton d'action -->
-          <div class="card-action">
-            <button class="tron-button primary">
-              🚀 LANCER CHALLENGE
-            </button>
-          </div>
 
         </div>
 
@@ -200,6 +201,43 @@ import { ChallengeConfig } from '@wizard-console/challenge';
       }
     }
 
+    .admin-section {
+      display: flex;
+      gap: 10px;
+
+      .admin-mqtt-button {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 20px;
+        background: linear-gradient(135deg, #ff6b6b, #ff4444);
+        border: 2px solid #ff6b6b;
+        border-radius: 8px;
+        color: #ffffff;
+        font-family: inherit;
+        font-size: 0.9rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        outline: none;
+
+        &:hover {
+          border-color: #ffd60a;
+          box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+          transform: translateY(-2px);
+        }
+
+        .icon {
+          font-size: 1.2rem;
+        }
+
+        .text {
+          letter-spacing: 1px;
+        }
+      }
+    }
+
     .challenges-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
@@ -234,6 +272,83 @@ import { ChallengeConfig } from '@wizard-console/challenge';
         color: #00ff88;
         font-size: 1.5rem;
         text-shadow: 0 0 10px #00ff88;
+      }
+
+      .admin-controls {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .toggle-button {
+        background: rgba(0, 180, 216, 0.2);
+        border: 2px solid #00b4d8;
+        border-radius: 20px;
+        padding: 8px 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-family: inherit;
+        font-size: 0.85rem;
+        font-weight: bold;
+        color: #ffffff;
+        position: relative;
+        outline: none;
+
+        &:hover:not(:disabled) {
+          border-color: #ffd60a;
+          box-shadow: 0 0 15px rgba(255, 214, 10, 0.3);
+        }
+
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        &.active {
+          background: rgba(0, 255, 136, 0.2);
+          border-color: #00ff88;
+
+          .toggle-slider {
+            background: #00ff88;
+            box-shadow: 0 0 10px #00ff88;
+          }
+        }
+
+        .toggle-slider {
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: #ff6b6b;
+          box-shadow: 0 0 10px #ff6b6b;
+          transition: all 0.3s ease;
+        }
+
+        .toggle-label {
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+      }
+
+      .challenge-card.player-profile {
+        border-color: #ffd60a;
+
+        &::after {
+          content: '👤 PROFIL';
+          position: absolute;
+          top: 20px;
+          left: 20px;
+          background: rgba(255, 214, 10, 0.2);
+          border: 1px solid #ffd60a;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 0.7rem;
+          color: #ffd60a;
+          font-weight: bold;
+        }
       }
     }
 
@@ -417,14 +532,21 @@ import { ChallengeConfig } from '@wizard-console/challenge';
 })
 export class ChallengesListComponent implements OnInit {
   private challengeService = inject(ChallengeService);
+  private playerProfileService = inject(PlayerProfileService);
+  private authService = inject(AuthService);
   private router = inject(Router);
 
   challenges: { id: string; config: ChallengeConfig }[] = [];
   isLoading = true;
   errorMessage = '';
+  playerProfileChallengeOpen = false;
+  isAdmin = false;
+  isTogglingChallenge = false;
 
   ngOnInit() {
     this.loadChallenges();
+    this.checkAdminStatus();
+    this.loadPlayerProfileStatus();
   }
 
   /**
@@ -435,11 +557,13 @@ export class ChallengesListComponent implements OnInit {
     this.errorMessage = '';
 
     this.challengeService.loadAvailableChallenges().subscribe({
-      next: (challenges) => {
-        this.challenges = challenges.map(config => ({
-          id: config.id,
-          config
+      next: (challenges: any[]) => {
+        // Le backend retourne [{id, config}, ...] au lieu de [ChallengeConfig, ...]
+        this.challenges = challenges.map((item: any) => ({
+          id: item.id,
+          config: item.config
         }));
+
         this.isLoading = false;
         console.log('✅ Challenges chargés:', this.challenges.length);
       },
@@ -486,5 +610,110 @@ export class ChallengesListComponent implements OnInit {
    */
   trackByChallenge(index: number, challenge: { id: string; config: ChallengeConfig }): string {
     return challenge.id;
+  }
+
+  /**
+   * Vérifie si l'utilisateur est admin
+   */
+  checkAdminStatus() {
+    this.isAdmin = this.authService.isAdmin();
+    const currentUser = this.authService.getCurrentUser();
+    console.log('🔐 Vérification statut admin:', {
+      isAdmin: this.isAdmin,
+      currentUser: currentUser,
+      token: this.authService.getToken() ? 'Présent' : 'Absent'
+    });
+  }
+
+  /**
+   * Charge le statut du challenge Player Profile
+   */
+  loadPlayerProfileStatus() {
+    this.playerProfileService.getStatus().subscribe({
+      next: (status) => {
+        this.playerProfileChallengeOpen = status.isOpen;
+      },
+      error: (error) => {
+        console.error('Erreur lors du chargement du statut Player Profile:', error);
+      }
+    });
+  }
+
+  /**
+   * Vérifie si un challenge est le Player Profile
+   */
+  isPlayerProfileChallenge(challengeId: string): boolean {
+    return challengeId === 'player-profile';
+  }
+
+  /**
+   * Toggle l'état du challenge Player Profile (admin uniquement)
+   */
+  togglePlayerProfileChallenge(event: Event) {
+    event.stopPropagation(); // Empêcher la navigation vers le challenge
+
+    console.log('🎛️ Toggle demandé:', {
+      isAdmin: this.isAdmin,
+      isAuthenticated: this.authService.isAuthenticated(),
+      currentUser: this.authService.getCurrentUser(),
+      hasToken: !!this.authService.getToken()
+    });
+
+    if (!this.isAdmin || this.isTogglingChallenge) {
+      console.warn('⚠️ Toggle refusé:', {
+        isAdmin: this.isAdmin,
+        isTogglingChallenge: this.isTogglingChallenge
+      });
+      return;
+    }
+
+    // Vérifier que l'utilisateur est bien authentifié
+    if (!this.authService.isAuthenticated() || !this.authService.getToken()) {
+      console.error('❌ Utilisateur non authentifié');
+      alert('Vous devez être connecté en tant qu\'administrateur pour effectuer cette action.');
+      return;
+    }
+
+    this.isTogglingChallenge = true;
+    const action = this.playerProfileChallengeOpen
+      ? this.playerProfileService.closeChallenge()
+      : this.playerProfileService.openChallenge();
+
+    action.subscribe({
+      next: (response) => {
+        console.log(`✅ Challenge Player Profile ${!this.playerProfileChallengeOpen ? 'ouvert' : 'fermé'}`);
+
+        // Attendre un peu que MQTT propage l'état, puis recharger le statut
+        setTimeout(() => {
+          this.loadPlayerProfileStatus();
+        }, 500);
+
+        this.isTogglingChallenge = false;
+      },
+      error: (error) => {
+        console.error('❌ Erreur lors du toggle du challenge:', error);
+        if (error.status === 401) {
+          alert('Erreur d\'authentification. Veuillez vous reconnecter en tant qu\'administrateur.');
+        } else if (error.status === 403) {
+          alert('Vous n\'avez pas les permissions nécessaires pour effectuer cette action.');
+        } else {
+          alert(`Erreur: ${error.message || 'Erreur inconnue'}`);
+        }
+        this.isTogglingChallenge = false;
+      }
+    });
+  }
+
+  /**
+   * Navigue vers la page de contrôle MQTT (admin uniquement)
+   */
+  navigateToMqttControl() {
+    if (!this.isAdmin) {
+      console.warn('⚠️ Accès refusé: utilisateur non admin');
+      return;
+    }
+
+    console.log('🌐 Navigation vers contrôle MQTT');
+    this.router.navigate(['/admin/mqtt-control']);
   }
 }

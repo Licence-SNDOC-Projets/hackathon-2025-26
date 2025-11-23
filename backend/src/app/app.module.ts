@@ -10,6 +10,10 @@ import { EmailController } from './email.controller';
 import { EmailService } from './email.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { MqttController } from './mqtt.controller';
+import { MqttService } from './mqtt.service';
+import { PlayerProfileController } from './player-profile.controller';
+import { PlayerProfileService } from './player-profile.service';
 import { JwtStrategy } from './jwt.strategy';
 
 @Module({
@@ -30,7 +34,7 @@ import { JwtStrategy } from './jwt.strategy';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AppController, ChallengeController, EmailController, AuthController],
-  providers: [AppService, ChallengeService, EmailService, AuthService, JwtStrategy],
+  controllers: [AppController, ChallengeController, EmailController, AuthController, MqttController, PlayerProfileController],
+  providers: [AppService, ChallengeService, EmailService, AuthService, MqttService, PlayerProfileService, JwtStrategy],
 })
 export class AppModule {}

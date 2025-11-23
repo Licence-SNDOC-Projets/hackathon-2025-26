@@ -1,0 +1,354 @@
+<div class="player-profile-container">
+
+  <!-- Status d'authentification -->
+  <app-auth-status></app-auth-status>
+
+  <!-- En-tête -->
+  <header class="profile-header">
+    <button class="back-button" (click)="goBack()">
+      ← Retour aux challenges
+    </button>
+    <h1 class="profile-title">
+      <span class="tron-glow">👤 CRÉATION DE PROFIL JOUEUR</span>
+    </h1>
+    <p class="profile-subtitle">
+      Évaluez vos compétences pour former les meilleures équipes
+    </p>
+  </header>
+
+  <!-- Message si challenge fermé -->
+  <div class="challenge-closed" *ngIf="!isLoading && !challengeOpen">
+    <div class="closed-icon">🔒</div>
+    <h2>Challenge fermé</h2>
+    <p>Le challenge de création de profil n'est pas encore ouvert.</p>
+    <p>Attendez que votre enseignant l'ouvre pour pouvoir créer votre profil.</p>
+    <button class="tron-button secondary" (click)="goBack()">
+      ← Retour
+    </button>
+  </div>
+
+  <!-- Profil existant -->
+  <div class="existing-profile" *ngIf="!isLoading && challengeOpen && existingProfile">
+    <div class="profile-card">
+      <div class="profile-card-header">
+        <h2>✅ Votre profil</h2>
+        <div class="player-class">{{ existingProfile.playerClass }}</div>
+      </div>
+
+      <div class="profile-info">
+        <div class="info-item">
+          <span class="info-label">Nom :</span>
+          <span class="info-value">{{ existingProfile.name }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Rôle préféré :</span>
+          <span class="info-value">{{ getRoleLabel(existingProfile.preferredRole) }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Score global :</span>
+          <span class="info-value score">{{ existingProfile.overallScore }}/20</span>
+        </div>
+      </div>
+
+      <div class="skills-display">
+        <h3>Compétences</h3>
+        <div class="skill-bar" *ngFor="let skill of getSkillsArray(existingProfile)">
+          <span class="skill-name">{{ skill.name }}</span>
+          <div class="skill-level">
+            <div class="skill-fill" [style.width.%]="skill.value * 20">
+              {{ skill.value }}/5
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="suggestions" *ngIf="existingProfile.suggestions?.length">
+        <h3>💡 Suggestions</h3>
+        <ul>
+          <li *ngFor="let suggestion of existingProfile.suggestions">{{ suggestion }}</li>
+        </ul>
+      </div>
+
+      <div class="profile-actions">
+        <button class="tron-button secondary" (click)="editProfile()">
+          ✏️ Modifier mon profil
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulaire de création/édition -->
+  <form class="profile-form"
+        *ngIf="!isLoading && challengeOpen && !existingProfile"
+        (ngSubmit)="submitProfile()"
+        #profileForm="ngForm">
+
+    <!-- Nom -->
+    <div class="form-section">
+      <label class="form-label">
+        <span class="label-icon">👤</span>
+        Votre nom complet
+      </label>
+      <input
+        type="text"
+        class="form-input"
+        [(ngModel)]="profile.name"
+        name="name"
+        required
+        placeholder="Entrez votre nom complet"
+        [disabled]="isSubmitting">
+    </div>
+
+    <!-- Compétences -->
+    <div class="form-section">
+      <h2 class="section-title">
+        <span class="tron-glow">⭐ Évaluez vos compétences</span>
+      </h2>
+      <p class="section-description">
+        Notez-vous de 1 (débutant) à 5 (expert) pour chaque domaine
+      </p>
+
+      <!-- Développement -->
+      <div class="skill-input">
+        <label class="skill-label">
+          <span class="skill-icon">💻</span>
+          Développement logiciel
+        </label>
+        <div class="skill-slider">
+          <input
+            type="range"
+            min="1"
+            max="5"
+            [(ngModel)]="profile.skills.development"
+            name="development"
+            [disabled]="isSubmitting">
+          <div class="skill-stars">
+            <span class="star" *ngFor="let star of [1,2,3,4,5]"
+                  [class.filled]="star <= profile.skills.development">⭐</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Électronique -->
+      <div class="skill-input">
+        <label class="skill-label">
+          <span class="skill-icon">⚡</span>
+          Électronique et circuits
+        </label>
+        <div class="skill-slider">
+          <input
+            type="range"
+            min="1"
+            max="5"
+            [(ngModel)]="profile.skills.electronics"
+            name="electronics"
+            [disabled]="isSubmitting">
+          <div class="skill-stars">
+            <span class="star" *ngFor="let star of [1,2,3,4,5]"
+                  [class.filled]="star <= profile.skills.electronics">⭐</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- IoT/MQTT -->
+      <div class="skill-input">
+        <label class="skill-label">
+          <span class="skill-icon">📡</span>
+          IoT et protocoles MQTT
+        </label>
+        <div class="skill-slider">
+          <input
+            type="range"
+            min="1"
+            max="5"
+            [(ngModel)]="profile.skills.iot"
+            name="iot"
+            [disabled]="isSubmitting">
+          <div class="skill-stars">
+            <span class="star" *ngFor="let star of [1,2,3,4,5]"
+                  [class.filled]="star <= profile.skills.iot">⭐</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mécanique -->
+      <div class="skill-input">
+        <label class="skill-label">
+          <span class="skill-icon">⚙️</span>
+          Mécanique et assemblage
+        </label>
+        <div class="skill-slider">
+          <input
+            type="range"
+            min="1"
+            max="5"
+            [(ngModel)]="profile.skills.mechanics"
+            name="mechanics"
+            [disabled]="isSubmitting">
+          <div class="skill-stars">
+            <span class="star" *ngFor="let star of [1,2,3,4,5]"
+                  [class.filled]="star <= profile.skills.mechanics">⭐</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rôle préféré -->
+    <div class="form-section">
+      <label class="form-label">
+        <span class="label-icon">🎯</span>
+        Rôle préféré dans l'équipe
+      </label>
+      <select
+        class="form-select"
+        [(ngModel)]="profile.preferredRole"
+        name="preferredRole"
+        required
+        [disabled]="isSubmitting">
+        <option value="leader">👑 Leader - Coordonner l'équipe</option>
+        <option value="developer">💻 Développeur - Coder et programmer</option>
+        <option value="electronics">⚡ Électronicien - Circuits et capteurs</option>
+        <option value="mechanics">⚙️ Mécanicien - Assemblage et structure</option>
+        <option value="generalist">🌟 Généraliste - Touche-à-tout</option>
+      </select>
+    </div>
+
+    <!-- Niveau d'énergie -->
+    <div class="form-section">
+      <label class="form-label">
+        <span class="label-icon">⚡</span>
+        Votre niveau d'énergie et motivation
+      </label>
+      <div class="energy-slider">
+        <input
+          type="range"
+          min="1"
+          max="5"
+          [(ngModel)]="profile.energyLevel"
+          name="energyLevel"
+          [disabled]="isSubmitting">
+        <div class="energy-display">
+          <span class="energy-emoji" *ngFor="let level of [1,2,3,4,5]"
+                [class.active]="level <= profile.energyLevel">
+            {{ level <= profile.energyLevel ? '🔥' : '❄️' }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Style de travail -->
+    <div class="form-section">
+      <label class="form-label">
+        <span class="label-icon">🤝</span>
+        Votre style de travail
+      </label>
+      <div class="work-style-options">
+        <label class="work-style-option"
+               [class.selected]="profile.workStyle === 'independent'">
+          <input
+            type="radio"
+            [(ngModel)]="profile.workStyle"
+            name="workStyle"
+            value="independent"
+            [disabled]="isSubmitting">
+          <div class="option-content">
+            <span class="option-icon">🚀</span>
+            <span class="option-label">Indépendant</span>
+            <span class="option-desc">Je préfère travailler seul</span>
+          </div>
+        </label>
+
+        <label class="work-style-option"
+               [class.selected]="profile.workStyle === 'collaborative'">
+          <input
+            type="radio"
+            [(ngModel)]="profile.workStyle"
+            name="workStyle"
+            value="collaborative"
+            [disabled]="isSubmitting">
+          <div class="option-content">
+            <span class="option-icon">👥</span>
+            <span class="option-label">Collaboratif</span>
+            <span class="option-desc">J'aime le travail d'équipe</span>
+          </div>
+        </label>
+
+        <label class="work-style-option"
+               [class.selected]="profile.workStyle === 'balanced'">
+          <input
+            type="radio"
+            [(ngModel)]="profile.workStyle"
+            name="workStyle"
+            value="balanced"
+            [disabled]="isSubmitting">
+          <div class="option-content">
+            <span class="option-icon">⚖️</span>
+            <span class="option-label">Équilibré</span>
+            <span class="option-desc">Les deux selon les tâches</span>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Compétence spéciale -->
+    <div class="form-section">
+      <label class="form-label">
+        <span class="label-icon">✨</span>
+        Compétence ou talent spécial (optionnel)
+      </label>
+      <textarea
+        class="form-textarea"
+        [(ngModel)]="profile.specialSkill"
+        name="specialSkill"
+        placeholder="Ex: Impression 3D, Design graphique, Intelligence artificielle..."
+        rows="3"
+        [disabled]="isSubmitting"></textarea>
+    </div>
+
+    <!-- Expérience passée -->
+    <div class="form-section">
+      <label class="form-label">
+        <span class="label-icon">📚</span>
+        Projets ou expériences pertinentes (optionnel)
+      </label>
+      <textarea
+        class="form-textarea"
+        [(ngModel)]="profile.pastExperience"
+        name="pastExperience"
+        placeholder="Ex: Projets robotiques, hackathons précédents, stages..."
+        rows="4"
+        [disabled]="isSubmitting"></textarea>
+    </div>
+
+    <!-- Message d'erreur -->
+    <div class="error-message" *ngIf="errorMessage">
+      <span class="error-icon">⚠️</span>
+      {{ errorMessage }}
+    </div>
+
+    <!-- Boutons d'action -->
+    <div class="form-actions">
+      <button
+        type="button"
+        class="tron-button secondary"
+        (click)="goBack()"
+        [disabled]="isSubmitting">
+        Annuler
+      </button>
+      <button
+        type="submit"
+        class="tron-button primary"
+        [disabled]="isSubmitting || !profileForm.valid">
+        <span *ngIf="!isSubmitting">✅ Valider mon profil</span>
+        <span *ngIf="isSubmitting">⏳ Envoi en cours...</span>
+      </button>
+    </div>
+  </form>
+
+  <!-- Chargement -->
+  <div class="loading" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <p>Chargement...</p>
+  </div>
+
+</div>
