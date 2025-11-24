@@ -14,6 +14,8 @@ import { MqttController } from './mqtt.controller';
 import { MqttService } from './mqtt.service';
 import { PlayerProfileController } from './player-profile.controller';
 import { PlayerProfileService } from './player-profile.service';
+import { TeamFormationController } from './team-formation.controller';
+import { TeamFormationService } from './team-formation.service';
 import { JwtStrategy } from './jwt.strategy';
 
 @Module({
@@ -34,7 +36,7 @@ import { JwtStrategy } from './jwt.strategy';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AppController, ChallengeController, EmailController, AuthController, MqttController, PlayerProfileController],
-  providers: [AppService, ChallengeService, EmailService, AuthService, MqttService, PlayerProfileService, JwtStrategy],
+  controllers: [AppController, ChallengeController, EmailController, AuthController, MqttController, PlayerProfileController, TeamFormationController],
+  providers: [AppService, ChallengeService, EmailService, AuthService, MqttService, PlayerProfileService, TeamFormationService, JwtStrategy],
 })
 export class AppModule {}

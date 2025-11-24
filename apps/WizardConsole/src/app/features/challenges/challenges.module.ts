@@ -24,6 +24,11 @@ import { TronLegacyCircuitComponent } from './pages/tron-legacy-circuit/tron-leg
         title: 'Profil Joueur'
       },
       {
+        path: 'team-formation',
+        loadComponent: () => import('./pages/team-formation/team-formation.component').then(m => m.TeamFormationComponent),
+        title: 'Formation d\'Équipes'
+      },
+      {
         path: 'tron-legacy-circuit',
         component: TronLegacyCircuitComponent,
         title: 'Tron Legacy Circuit Challenge'

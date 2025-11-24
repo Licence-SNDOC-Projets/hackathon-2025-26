@@ -133,7 +133,7 @@ export class PlayerProfileService implements OnModuleInit, OnModuleDestroy {
     };
 
     // Publier sur hackathon/player-profile/<email>
-    const topic = `${this.MQTT_TOPIC_PROFILES_BASE}/${email}`;
+    const topic = `${this.MQTT_TOPIC_PROFILES_BASE}/${this.sanitizeTopic(email)}`;
 
     this.mqttClient.publish(
       topic,
@@ -148,7 +148,11 @@ export class PlayerProfileService implements OnModuleInit, OnModuleDestroy {
       }
     );
   }
-
+  private  sanitizeTopic(topic: string): string {
+    return topic
+      .replace(/[^a-zA-Z0-9_-]/g, '_')  // remplace tout caractère non autorisé
+      .toLowerCase();
+  }
   /**
    * Obtient l'instance du challenge Player Profile
    */

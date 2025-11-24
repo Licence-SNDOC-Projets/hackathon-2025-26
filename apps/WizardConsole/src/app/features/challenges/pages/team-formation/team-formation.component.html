@@ -1,0 +1,400 @@
+<div class="team-formation-container">
+  <!-- Header -->
+  <div class="header">
+    <h1>🎮 Guild.join() - Squad Assembly</h1>
+    <p class="subtitle">Formez votre équipe et préparez-vous pour les défis à venir</p>
+  </div>
+
+  <!-- Messages -->
+  <div class="messages">
+    <div class="alert alert-error" *ngIf="error">
+      <span class="icon">⚠️</span>
+      {{ error }}
+      <button class="close-btn" (click)="error = null">×</button>
+    </div>
+    <div class="alert alert-success" *ngIf="successMessage">
+      <span class="icon">✓</span>
+      {{ successMessage }}
+    </div>
+  </div>
+
+  <!-- Loader -->
+  <div class="loader" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <p>Chargement...</p>
+  </div>
+
+  <!-- Navigation -->
+  <div class="tabs" *ngIf="!isLoading">
+    <button
+      class="tab"
+      [class.active]="activeView === 'teams'"
+      (click)="setActiveView('teams')">
+      🏢 Équipes ({{ teams.length }})
+    </button>
+    <button
+      class="tab"
+      [class.active]="activeView === 'backlog'"
+      (click)="setActiveView('backlog')">
+      👥 Backlog ({{ backlogPlayers.length }})
+    </button>
+    <button
+      class="tab"
+      [class.active]="activeView === 'myTeam'"
+      (click)="setActiveView('myTeam')"
+      [disabled]="!myTeam">
+      ⭐ Mon Équipe
+    </button>
+  </div>
+
+  <!-- Content -->
+  <div class="content" *ngIf="!isLoading">
+
+    <!-- Vue: Liste des équipes -->
+    <div class="teams-view" *ngIf="activeView === 'teams'">
+      <div class="view-header">
+        <h2>12 Équipes du Hackathon</h2>
+        <p class="subtitle" *ngIf="!myTeam">Choisissez stratégiquement votre équipe !</p>
+      </div>
+
+      <div class="teams-grid">
+        <div class="team-card" *ngFor="let team of teams" (click)="viewTeamDetails(team)">
+          <div class="team-header">
+            <h3>{{ team.name }}</h3>
+            <span class="team-status" [class.full]="isTeamFull(team)">
+              {{ isTeamFull(team) ? '🔒 Complète' : '🟢 Ouverte' }}
+            </span>
+          </div>
+
+          <div class="team-info">
+            <div class="info-item">
+              <span class="label">Membres:</span>
+              <span class="value">{{ team.members.length }}{{ team.maxMembers ? ' / ' + team.maxMembers : '' }}</span>
+            </div>
+            <div class="progress-bar">
+              <div
+                class="progress-fill"
+                [style.width.%]="getTeamFillPercentage(team)"
+                [class.complete]="isTeamFull(team)">
+              </div>
+            </div>
+          </div>
+
+          <div class="team-members">
+            <div class="member-avatar" *ngFor="let member of team.members" [title]="member.name">
+              {{ member.name.charAt(0).toUpperCase() }}
+              <span class="captain-badge" *ngIf="member.isCaptain">👑</span>
+            </div>
+          </div>
+
+          <button
+            class="btn btn-secondary btn-sm"
+            (click)="joinTeam(team); $event.stopPropagation()"
+            *ngIf="!myTeam && !isTeamFull(team)">
+            Rejoindre
+          </button>
+        </div>
+
+        <div class="empty-state" *ngIf="teams.length === 0">
+          <div class="empty-icon">🏢</div>
+          <h3>Chargement des équipes...</h3>
+          <p>Les 12 équipes du hackathon sont en cours de chargement</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vue: Backlog -->
+    <div class="backlog-view" *ngIf="activeView === 'backlog'">
+      <div class="view-header">
+        <h2>Joueurs Sans Équipe</h2>
+        <p class="subtitle">{{ backlogPlayers.length }} joueur(s) en attente</p>
+      </div>
+
+      <div class="players-list">
+        <div class="player-card" *ngFor="let player of backlogPlayers">
+          <div class="player-header">
+            <div class="player-avatar">
+              {{ player.profile.name.charAt(0).toUpperCase() }}
+            </div>
+            <div class="player-info">
+              <h3>{{ player.profile.name }}</h3>
+              <p class="player-role">{{ getRoleLabel(player.profile.preferredRole) }}</p>
+              <p class="player-experience">{{ getExperienceLabel(player.profile.experience) }}</p>
+            </div>
+          </div>
+
+          <div class="player-skills">
+            <div class="skill-bar">
+              <span class="skill-label">💻 Dev</span>
+              <div class="skill-progress">
+                <div
+                  class="skill-fill"
+                  [style.width.%]="player.profile.skills.development * 20"
+                  [style.background-color]="getSkillColor(player.profile.skills.development)">
+                </div>
+              </div>
+              <span class="skill-value">{{ player.profile.skills.development }}/5</span>
+            </div>
+            <div class="skill-bar">
+              <span class="skill-label">⚡ Elec</span>
+              <div class="skill-progress">
+                <div
+                  class="skill-fill"
+                  [style.width.%]="player.profile.skills.electronics * 20"
+                  [style.background-color]="getSkillColor(player.profile.skills.electronics)">
+                </div>
+              </div>
+              <span class="skill-value">{{ player.profile.skills.electronics }}/5</span>
+            </div>
+            <div class="skill-bar">
+              <span class="skill-label">📡 IoT</span>
+              <div class="skill-progress">
+                <div
+                  class="skill-fill"
+                  [style.width.%]="player.profile.skills.iot * 20"
+                  [style.background-color]="getSkillColor(player.profile.skills.iot)">
+                </div>
+              </div>
+              <span class="skill-value">{{ player.profile.skills.iot }}/5</span>
+            </div>
+            <div class="skill-bar">
+              <span class="skill-label">🔧 Meca</span>
+              <div class="skill-progress">
+                <div
+                  class="skill-fill"
+                  [style.width.%]="player.profile.skills.mechanics * 20"
+                  [style.background-color]="getSkillColor(player.profile.skills.mechanics)">
+                </div>
+              </div>
+              <span class="skill-value">{{ player.profile.skills.mechanics }}/5</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="empty-state" *ngIf="backlogPlayers.length === 0">
+          <div class="empty-icon">👥</div>
+          <h3>Tous les joueurs ont une équipe</h3>
+          <p>Excellent ! Tout le monde est organisé.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vue: Mon équipe -->
+    <div class="my-team-view" *ngIf="activeView === 'myTeam' && myTeam">
+      <div class="view-header">
+        <h2>{{ myTeam.name }}</h2>
+        <button class="btn btn-danger" (click)="leaveTeam()">
+          <span>🚪</span> Quitter l'équipe
+        </button>
+      </div>
+
+      <div class="team-details">
+        <div class="team-stats">
+          <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-value">{{ myTeam.members.length }}</div>
+            <div class="stat-label">Membres</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">{{ isTeamFull(myTeam) ? '🔒' : '🟢' }}</div>
+            <div class="stat-value">{{ isTeamFull(myTeam) ? 'Complète' : 'Ouverte' }}</div>
+            <div class="stat-label">Statut</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📅</div>
+            <div class="stat-value">{{ myTeam.createdAt | date:'short' }}</div>
+            <div class="stat-label">Créée le</div>
+          </div>
+        </div>
+
+        <div class="members-section">
+          <h3>Membres de l'équipe</h3>
+          <div class="members-list">
+            <div class="member-card" *ngFor="let member of myTeam.members">
+              <div class="member-header">
+                <div class="member-avatar-large">
+                  {{ member.name.charAt(0).toUpperCase() }}
+                  <span class="captain-badge-large" *ngIf="member.isCaptain">👑</span>
+                </div>
+                <div class="member-info">
+                  <h4>{{ member.name }}</h4>
+                  <p class="member-role">{{ getRoleLabel(member.profile.preferredRole) }}</p>
+                  <p class="member-experience">{{ getExperienceLabel(member.profile.experience) }}</p>
+                  <p class="member-workstyle">{{ getWorkStyleLabel(member.profile.motivation.workStyle) }}</p>
+                </div>
+              </div>
+
+              <div class="member-skills">
+                <div class="skill-row">
+                  <span class="skill-label">💻 Développement</span>
+                  <div class="skill-bar-horizontal">
+                    <div
+                      class="skill-fill"
+                      [style.width.%]="member.profile.skills.development * 20"
+                      [style.background-color]="getSkillColor(member.profile.skills.development)">
+                    </div>
+                  </div>
+                  <span class="skill-value">{{ member.profile.skills.development }}/5</span>
+                </div>
+                <div class="skill-row">
+                  <span class="skill-label">⚡ Électronique</span>
+                  <div class="skill-bar-horizontal">
+                    <div
+                      class="skill-fill"
+                      [style.width.%]="member.profile.skills.electronics * 20"
+                      [style.background-color]="getSkillColor(member.profile.skills.electronics)">
+                    </div>
+                  </div>
+                  <span class="skill-value">{{ member.profile.skills.electronics }}/5</span>
+                </div>
+                <div class="skill-row">
+                  <span class="skill-label">📡 IoT</span>
+                  <div class="skill-bar-horizontal">
+                    <div
+                      class="skill-fill"
+                      [style.width.%]="member.profile.skills.iot * 20"
+                      [style.background-color]="getSkillColor(member.profile.skills.iot)">
+                    </div>
+                  </div>
+                  <span class="skill-value">{{ member.profile.skills.iot }}/5</span>
+                </div>
+                <div class="skill-row">
+                  <span class="skill-label">🔧 Mécanique</span>
+                  <div class="skill-bar-horizontal">
+                    <div
+                      class="skill-fill"
+                      [style.width.%]="member.profile.skills.mechanics * 20"
+                      [style.background-color]="getSkillColor(member.profile.skills.mechanics)">
+                    </div>
+                  </div>
+                  <span class="skill-value">{{ member.profile.skills.mechanics }}/5</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="empty-state" *ngIf="activeView === 'myTeam' && !myTeam">
+      <div class="empty-icon">⭐</div>
+      <h3>Vous n'avez pas encore d'équipe</h3>
+      <p>Rejoignez une équipe existante ou créez la vôtre !</p>
+      <button class="btn btn-primary" (click)="setActiveView('teams')">
+        Voir les équipes
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Détails de l'équipe -->
+<div class="modal-overlay" *ngIf="showTeamDetailsModal" (click)="closeModals()">
+  <div class="modal modal-large" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>{{ selectedTeam?.name }}</h2>
+      <button class="close-btn" (click)="closeModals()">×</button>
+    </div>
+    <div class="modal-body" *ngIf="selectedTeam && selectedTeamProfile">
+      <div class="team-profile-summary">
+        <div class="profile-stat">
+          <span class="label">Membres:</span>
+          <span class="value">{{ selectedTeamProfile.totalMembers }}</span>
+        </div>
+        <div class="profile-stat">
+          <span class="label">Énergie:</span>
+          <span class="value">{{ selectedTeamProfile.energyLevel }}/5</span>
+        </div>
+      </div>
+
+      <div class="team-skills-aggregate">
+        <h3>Compétences moyennes de l'équipe</h3>
+        <div class="aggregate-skills">
+          <div class="aggregate-skill">
+            <span class="label">💻 Développement</span>
+            <div class="skill-bar-large">
+              <div
+                class="skill-fill"
+                [style.width.%]="selectedTeamProfile.averageSkills.development * 20"
+                [style.background-color]="getSkillColor(selectedTeamProfile.averageSkills.development)">
+              </div>
+            </div>
+            <span class="value">{{ selectedTeamProfile.averageSkills.development.toFixed(1) }}/5</span>
+          </div>
+          <div class="aggregate-skill">
+            <span class="label">⚡ Électronique</span>
+            <div class="skill-bar-large">
+              <div
+                class="skill-fill"
+                [style.width.%]="selectedTeamProfile.averageSkills.electronics * 20"
+                [style.background-color]="getSkillColor(selectedTeamProfile.averageSkills.electronics)">
+              </div>
+            </div>
+            <span class="value">{{ selectedTeamProfile.averageSkills.electronics.toFixed(1) }}/5</span>
+          </div>
+          <div class="aggregate-skill">
+            <span class="label">📡 IoT</span>
+            <div class="skill-bar-large">
+              <div
+                class="skill-fill"
+                [style.width.%]="selectedTeamProfile.averageSkills.iot * 20"
+                [style.background-color]="getSkillColor(selectedTeamProfile.averageSkills.iot)">
+              </div>
+            </div>
+            <span class="value">{{ selectedTeamProfile.averageSkills.iot.toFixed(1) }}/5</span>
+          </div>
+          <div class="aggregate-skill">
+            <span class="label">🔧 Mécanique</span>
+            <div class="skill-bar-large">
+              <div
+                class="skill-fill"
+                [style.width.%]="selectedTeamProfile.averageSkills.mechanics * 20"
+                [style.background-color]="getSkillColor(selectedTeamProfile.averageSkills.mechanics)">
+              </div>
+            </div>
+            <span class="value">{{ selectedTeamProfile.averageSkills.mechanics.toFixed(1) }}/5</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="team-analysis">
+        <div class="analysis-section">
+          <h4>💪 Forces de l'équipe</h4>
+          <ul>
+            <li *ngFor="let strength of selectedTeamProfile.strengths">{{ strength }}</li>
+          </ul>
+        </div>
+        <div class="analysis-section">
+          <h4>⚠️ Points à améliorer</h4>
+          <ul>
+            <li *ngFor="let weakness of selectedTeamProfile.weaknesses">{{ weakness }}</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="team-members-preview">
+        <h3>Membres ({{ selectedTeam.members.length }})</h3>
+        <div class="members-preview-list">
+          <div class="member-preview" *ngFor="let member of selectedTeam.members">
+            <div class="member-avatar">
+              {{ member.name.charAt(0).toUpperCase() }}
+              <span class="captain-badge" *ngIf="member.isCaptain">👑</span>
+            </div>
+            <div class="member-name">
+              <strong>{{ member.name }}</strong>
+              <span>{{ getRoleLabel(member.profile.preferredRole) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeModals()">Fermer</button>
+      <button
+        class="btn btn-primary"
+        (click)="joinTeam(selectedTeam!)"
+        *ngIf="!myTeam && selectedTeam && !isTeamFull(selectedTeam)">
+        Rejoindre cette équipe
+      </button>
+    </div>
+  </div>
+</div>

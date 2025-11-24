@@ -3,7 +3,10 @@ const PROXY_CONFIG = {
     "target": "http://localhost:3000",
     "secure": false,
     "changeOrigin": true,
-    "logLevel": "debug"
+    "logLevel": "debug",
+    "pathRewrite": {
+      "^/api": "/api"  // Le backend a déjà le préfixe /api, on le garde
+    }
   }
 };
 
